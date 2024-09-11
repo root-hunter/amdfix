@@ -4,21 +4,38 @@ const PARAM_CPU_BOOST_PATH: &str = "/sys/devices/system/cpu/cpufreq/boost";
 
 struct CpuController;
 impl CpuController {
-    pub fn change_boost(value: bool) -> Result<(), std::io::Error> {
-        let v: &str = match value {
+    pub fn change_boost_status(value: bool) -> Result<(), std::io::Error> {
+        let value: &str = match value {
             true => "1",
-            false => "0"
+            false => "0",
         };
 
-        let result = std::fs::write(PARAM_CPU_BOOST_PATH, v);
+        return std::fs::write(PARAM_CPU_BOOST_PATH, value);
+    }
 
-        if result.is_ok() {
-            return Ok(());
+    pub fn get_boost_status() -> Result<bool, std::io::Error> {
+        let file = std::fs::read(PARAM_CPU_BOOST_PATH);
+
+        if file.is_ok() {
+            let content = file.unwrap();
+            let content = content.as_ref();
+            let parsed = atoi::atoi::<u8>(content);
+
+            if parsed.is_some() {
+                let parsed = parsed.unwrap();
+
+                return match parsed {
+                    0 => Ok(false),
+                    1 => Ok(true),
+                    _ => panic!("Not valid status value (0-1)")
+                }
+            } else {
+                panic!("Not valid content in boost status file")
+            }
         } else {
-            let err = result.unwrap_err();
-            return Err(err);
+            return Err(file.unwrap_err())
         }
-    } 
+    }
 }
 
 fn main() {
@@ -29,39 +46,53 @@ fn main() {
         .about("CPU AMD settings interface linux")
         .version("0.1.0")
         .subcommand_required(true)
-        .subcommand(clap::Command::new("boost")
-            .about("CPU boost param")
-            .subcommand_required(true)
-            .arg(
-                clap::Arg::new("flag-path")
-                    .long("flag-path")
-                    .help("Path of CPU boost flag")
-                    .default_value(PARAM_CPU_BOOST_PATH)
-                    .action(clap::ArgAction::Set)   
-            )
-            .subcommand(
-                clap::Command::new("active")
-                    .about("Active CPU boost")
-            )
-            .subcommand(
-                clap::Command::new("deactive")
-                    .about("Deactive CPU boost")
-            )).get_matches();
+        .subcommand(
+            clap::Command::new("boost")
+                .about("CPU boost param")
+                .subcommand_required(true)
+                .arg(
+                    clap::Arg::new("flag-path")
+                        .long("flag-path")
+                        .help("Path of CPU boost flag")
+                        .default_value(PARAM_CPU_BOOST_PATH)
+                        .action(clap::ArgAction::Set),
+                )
+                .subcommand(clap::Command::new("active").about("Active CPU boost"))
+                .subcommand(clap::Command::new("deactive").about("Deactive CPU boost"))
+                .subcommand(clap::Command::new("status").about("Check CPU boost status"))
+        )
+        .get_matches();
 
     match matches.subcommand() {
-        Some(("boost", boost_matches)) => {
-            let active_boost = boost_matches.get_flag("active");
-            let result = CpuController::change_boost(active_boost);
+        Some(("boost", boost_matches)) => match boost_matches.subcommand() {
+            Some(("active", _)) => {
+                let result = CpuController::change_boost_status(true);
 
-            if result.is_ok() {
-                if active_boost {
+                if result.is_ok() {
                     info!("CPU boost activated");
                 } else {
-                    info!("CPU boost deactivated");
+                    error!("Error activating CPU boost: {}", result.unwrap_err());
                 }
-            } else {
-                error!("Error updating CPU boost: {}", result.unwrap_err());
             }
+            Some(("deactive", _)) => {
+                let result = CpuController::change_boost_status(false);
+
+                if result.is_ok() {
+                    info!("CPU boost deactivated");
+                } else {
+                    error!("Error deactivating CPU boost: {}", result.unwrap_err());
+                }
+            },
+            Some(("status", _)) => {
+                let cpu_status = CpuController::get_boost_status();
+
+                if cpu_status.is_ok() {
+                    info!("CPU boost status: {}", cpu_status.unwrap());
+                } else {
+                    error!("Error to retrive CPU boost status")
+                }
+            }
+            _ => {}
         },
         _ => {
             warn!("Not valid command");
