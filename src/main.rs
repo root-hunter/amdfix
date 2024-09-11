@@ -42,7 +42,8 @@ fn main() {
     std::env::set_var("RUST_LOG", "debug");
     env_logger::init();
 
-    let matches = clap::Command::new("amdboost")
+    let matches = clap::Command::new("amdfix")
+        .author("Antonio Ricciardi")
         .about("CPU AMD settings interface linux")
         .version("0.1.0")
         .subcommand_required(true)

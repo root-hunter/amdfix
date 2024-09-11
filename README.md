@@ -32,6 +32,17 @@ chmod +x install.sh
 sudo ./install.sh
 ```
 
+or 
+
+```bash
+git clone https://github.com/root-hunter/amdfix.git
+cd amdfix
+chmod +x install.sh
+sudo make install
+```
+
+
+
 ## Usage
 Activate CPU Turbo boost
 ```bash
