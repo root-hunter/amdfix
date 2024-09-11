@@ -89,10 +89,12 @@ fn main() {
                 if cpu_status.is_ok() {
                     info!("CPU boost status: {}", cpu_status.unwrap());
                 } else {
-                    error!("Error to retrive CPU boost status")
+                    error!("Error to retrive CPU boost status");
                 }
             }
-            _ => {}
+            _ => {
+                warn!("Not valid command");
+            }
         },
         _ => {
             warn!("Not valid command");
